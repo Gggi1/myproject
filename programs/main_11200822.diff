@@ -1,0 +1,98 @@
+#include <stdio.h>
+#include <stdint.h>
+
+#define START_IP  ( (160 << 24) | (10 << 16) | (1 << 8) | 1 )
+#define TOTAL_IPS 1999
+#define STEP      2
+
+typedef struct {
+    uint32_t key;
+    uint32_t key_ip;
+    uint32_t start_ip;
+    uint32_t end_ip;
+} Rule;
+
+void ip_to_str(uint32_t ip, char *str) {
+    sprintf(str, "%u.%u.%u.%u",
+        (ip >> 24) & 0xFF,
+        (ip >> 16) & 0xFF,
+        (ip >> 8) & 0xFF,
+        ip & 0xFF);
+}
+
+void key_to_str(uint32_t key, char *str) {
+    sprintf(str, "%u.%u.%u.%u",
+        (key >> 24) & 0xFF,
+        (key >> 16) & 0xFF,
+        (key >> 8) & 0xFF,
+        key & 0xFF);
+}
+
+int main() {
+    Rule rules[17];
+    int rule_index = 0;
+
+    // 规则1-15：第三个八位组从1到15，每个规则覆盖一个第三个八位组
+    for (uint8_t third_octet = 1; third_octet <= 15; third_octet++) {
+        rules[rule_index].key = 0xFFFFFFFF; // 全部位固定
+        rules[rule_index].key &= ~0x000000FE; // 第1到第7位可变
+        rules[rule_index].key_ip = (160 << 24) | (10 << 16) | (third_octet << 8) | 0x01;
+        rules[rule_index].start_ip = (160 << 24) | (10 << 16) | (third_octet << 8) | 0x01;
+        rules[rule_index].end_ip = (160 << 24) | (10 << 16) | (third_octet << 8) | 0xFF;
+        rule_index++;
+    }
+
+    // 处理第三个八位组为16的情况，需要精确控制第四个八位组
+    // 我们将第四个八位组分成多个范围，以避免包含额外的IP
+
+    // 第一步：覆盖160.10.16.1 - 160.10.16.127
+    rules[rule_index].key = 0xFFFFFF80; // 固定前25位，最后7位可变
+    rules[rule_index].key_ip = (160 << 24) | (10 << 16) | (16 << 8) | 0x01;
+    rules[rule_index].start_ip = (160 << 24) | (10 << 16) | (16 << 8) | 0x01;
+    rules[rule_index].end_ip = (160 << 24) | (10 << 16) | (16 << 8) | 127;
+    rule_index++;
+
+    // 第二步：覆盖160.10.16.129 - 160.10.16.157
+    // 由于范围较小，我们需要再细分
+    // 创建规则覆盖160.10.16.129 - 160.10.16.159
+    rules[rule_index].key = 0xFFFFFFE1; // 固定前27位，最后5位可变
+    rules[rule_index].key_ip = (160 << 24) | (10 << 16) | (16 << 8) | 129;
+    rules[rule_index].start_ip = (160 << 24) | (10 << 16) | (16 << 8) | 129;
+    rules[rule_index].end_ip = (160 << 24) | (10 << 16) | (16 << 8) | 159;
+    rule_index++;
+
+    // 创建规则覆盖160.10.16.161 - 160.10.16.157
+    // 注意到161 > 157，因此只需覆盖160.10.16.161 - 160.10.16.157
+    // 由于范围已经超过157，我们不需要再创建规则
+
+    // 但是我们还需要覆盖160.10.16.161 - 160.10.16.157之间的IP
+    // 由于这是不可能的，因此只需覆盖到160.10.16.157
+
+    // 创建规则覆盖160.10.16.161 - 160.10.16.157
+    // 由于161 > 157，此范围不存在，我们忽略
+
+    // 创建规则覆盖160.10.16.129 - 160.10.16.157
+    rules[rule_index].key = 0xFFFFFFE1; // 固定前27位，最后5位可变
+    rules[rule_index].key_ip = (160 << 24) | (10 << 16) | (16 << 8) | 129;
+    rules[rule_index].start_ip = (160 << 24) | (10 << 16) | (16 << 8) | 129;
+    rules[rule_index].end_ip = (160 << 24) | (10 << 16) | (16 << 8) | 157;
+    rule_index++;
+
+    int num_rules = rule_index;
+    char start_ip_str[16], end_ip_str[16], key_ip_str[16], key_str[16];
+
+    for (int i = 0; i < num_rules; i++) {
+        ip_to_str(rules[i].start_ip, start_ip_str);
+        ip_to_str(rules[i].end_ip, end_ip_str);
+        ip_to_str(rules[i].key_ip, key_ip_str);
+        key_to_str(rules[i].key, key_str);
+
+        printf("Rule %d:\n", i + 1);
+        printf("Key: %s\n", key_str);
+        printf("Key-IP: %s\n", key_ip_str);
+        printf("IP Range: %s - %s\n\n", start_ip_str, end_ip_str);
+    }
+
+    return 0;
+}
+

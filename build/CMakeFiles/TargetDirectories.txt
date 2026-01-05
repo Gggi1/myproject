@@ -1,0 +1,3 @@
+/home/ubuntu/document/c_practice/myproject/build/CMakeFiles/rebuild_cache.dir
+/home/ubuntu/document/c_practice/myproject/build/CMakeFiles/edit_cache.dir
+/home/ubuntu/document/c_practice/myproject/build/CMakeFiles/myprogram.dir
